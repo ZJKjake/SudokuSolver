@@ -1,7 +1,7 @@
 import java.lang.*;
 
 public class Generate {
-    int[] mat[];
+    int[] grid[]; 
     int numRow;
     int mid;
     int empty;
@@ -13,7 +13,7 @@ public class Generate {
         Double rr = Math.sqrt(r);
         mid = rr.intValue();
 
-        mat = new int[r][r];
+        grid = new int[r][r];
     }
 
     public void fillValues() {
@@ -31,13 +31,13 @@ public class Generate {
     boolean usedBox(int rowStart, int colStart, int num) {
         for (int i = 0; i<mid; i++)
             for (int j = 0; j<mid; j++)
-                if (mat[rowStart+i][colStart+j]==num)
+                if (grid[rowStart+i][colStart+j]==num)
                     return false;
 
         return true;
     }
 
-    void fillBox(int row,int col){
+    void fillBox(int row,int col){ //Fills the 3*3 box with random numbers that satisfy the sudoku rules
         int num=0;
         for (int i=0; i<mid; i++)
         {
@@ -47,7 +47,7 @@ public class Generate {
                 while (!usedBox(row, col, num)){
                     num=randomGenerator(numRow);
                 }
-                mat[row +i][col+j]= num;
+                grid[row +i][col+j]= num;
             }
         }
     }
@@ -60,23 +60,23 @@ public class Generate {
         return (existRow(i, num) && existCol(j, num) && usedBox(i-i%mid, j-j%mid, num));
     }
 
-    boolean existRow(int i,int num){
+    boolean existRow(int i,int num){ //method checks if the number num already exists in the row i of the grid 
         for (int j = 0; j<numRow; j++) {
-            if (mat[i][j] == num) {
+            if (grid[i][j] == num) {
                 return false;
             }
         }
         return true;
     }
 
-    boolean existCol(int j,int num) {
+    boolean existCol(int j,int num) { //Similar as existRow
         for (int i = 0; i<numRow; i++)
-            if (mat[i][j] == num)
+            if (grid[i][j] == num)
                 return false;
         return true;
     }
 
-    public void removeExtra() {
+    public void removeExtra() { //removes extra numbers from the grid to create empty cells
         int count = empty;
         while (count != 0) {
             int rand = randomGenerator(numRow*numRow)-1;
@@ -85,9 +85,9 @@ public class Generate {
             if (j != 0){
                 j=j-1;
             }
-            if (mat[i][j] != 0) {
+            if (grid[i][j] != 0) {
                 count--;
-                mat[i][j]=0;
+                grid[i][j]=0;
             }
         }
     }
@@ -123,12 +123,12 @@ public class Generate {
 
         for (int num = 1; num<numRow+1; num++){
             if (isSafe(i, j, num)){
-                mat[i][j] = num;
+                grid[i][j] = num;
                 if (fillRemain(i, j+1)) {
                     return true;
                 }
 
-                mat[i][j]=0;
+                grid[i][j]=0;
             }
         }
         return false;
