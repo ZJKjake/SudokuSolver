@@ -2,15 +2,12 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Objects;
 
 public class Grid implements ActionListener{
 
     JFrame frame;
     JComponent[][] comps;
-    JButton buttonFillBoard, buttonBruteForce, buttonCrossHatch, buttonBitMasks, buttonClear, buttonGenerate ;
+    JButton buttonFillBoard, buttonBruteForce, buttonBitMasks, buttonClear, buttonGenerate ;
     GridPanel panelGrid;
     JPanel panelInput;
 
@@ -19,11 +16,8 @@ public class Grid implements ActionListener{
     public static int slotX =10;
     public static int slotY =10;
 
-    private int[][] originalGrid;
+    private int[][] ogGrid;
     private static int[][] grid=null;
-
-
-
 
     public Grid(){
         board.frame.setVisible(false);
@@ -32,18 +26,20 @@ public class Grid implements ActionListener{
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         panelInput = new JPanel();
-        buttonFillBoard=new JButton("Fill Board");
-        panelInput.add(buttonFillBoard);
-        buttonBruteForce = new JButton("BruteSolve");
-        panelInput.add(buttonBruteForce);
-        buttonCrossHatch = new JButton("CrossHatch");
-        panelInput.add(buttonCrossHatch);
-        buttonClear=new JButton("Clear");
-        panelInput.add(buttonClear);
-        buttonBitMasks=new JButton("BitMasks");
-        panelInput.add(buttonBitMasks);
+//        buttonFillBoard=new JButton("Fill Board");
+//        panelInput.add(buttonFillBoard);
+
         buttonGenerate=new JButton("Generate");
         panelInput.add(buttonGenerate);
+
+        buttonBruteForce = new JButton("BruteSolve");
+        panelInput.add(buttonBruteForce);
+
+        buttonBitMasks=new JButton("BitMasks");
+        panelInput.add(buttonBitMasks);
+        buttonClear=new JButton("Clear");
+        panelInput.add(buttonClear);
+
 
         frame.add(panelInput, BorderLayout.NORTH);
 
@@ -74,22 +70,44 @@ public class Grid implements ActionListener{
                 });
             }
         }
-        buttonFillBoard.addActionListener(new ActionListener(){
+
+//        buttonFillBoard.addActionListener(new ActionListener(){
+//            public void actionPerformed(ActionEvent e){
+//                if(grid!=null) {
+//                    fillBoard(grid);
+//                }
+//                else{
+//                    JOptionPane.showMessageDialog(frame, "Please generate a new grid!");
+//                }
+//            }
+//        });
+        buttonGenerate.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
+                clearAllHighlight();
+                int empty = -1;
+
+                // Keep prompting the user until a valid number of empty cells is entered
+                while (empty < 0 || empty > 81 ) {
+                    String input = JOptionPane.showInputDialog(
+                            null,
+                            "Enter the number of empty cells (0-81):",
+                            "Empty Cells",
+                            JOptionPane.PLAIN_MESSAGE);
+
+                    empty = Integer.parseInt(input);
+
+                }
+
+                // Generate the sudoku grid
+                Generate sudoku = new Generate(9, empty);
+                sudoku.fillValues();
+                grid=sudoku.grid;
                 if(grid!=null) {
                     fillBoard(grid);
                 }
                 else{
                     JOptionPane.showMessageDialog(frame, "Please generate a new grid!");
                 }
-            }
-        });
-        buttonGenerate.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent e){
-                int N = 9, K = 20;
-                Generate sudoku = new Generate(N, K);
-                sudoku.fillValues();
-                grid=sudoku.mat;
             }
         });
 
@@ -99,54 +117,95 @@ public class Grid implements ActionListener{
                 fillBoard(g);
             }
         });
-        buttonBruteForce.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent e){
-                long start = System.nanoTime();
-
-                boolean solve = bruteSolve(grid);
-                if(!solve){
-                    System.out.println("No Solution");
-                }
-                long end = System.nanoTime();
-
-                double execution = end - start;
-                System.out.println(execution/1000000000+" Seconds");
-            }
-        });
-
-        buttonCrossHatch.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent e){
-
-
-                //I'll add this method
-                //Currently still testing
-            }
-        });
-        buttonBitMasks.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent e){
-
-                long start = System.nanoTime();
-                if(grid!=null) {
-                    boolean solve=bitMasks(grid, 0, 0);
-                    if (!solve){
-
-                        System.out.println("No solution exists");
-
+        buttonBruteForce.addActionListener(e -> {
+            SwingWorker<Boolean, int[][]> worker = new SwingWorker<Boolean, int[][]>() {
+                @Override
+                protected Boolean doInBackground() throws Exception {
+                    if (grid != null) {
+                        int[][] solution = new int[9][9];
+                        boolean solve = bruteSolve(grid);
+                        if (solve) {
+                            publish(solution);
+                        }
+                        return solve;
+                    } else {
+                        JOptionPane.showMessageDialog(frame, "Please generate a new grid!");
+                        return false;
                     }
                 }
-                else{
-                    JOptionPane.showMessageDialog(frame, "Please generate a new grid!");
+
+                @Override
+                protected void done() {
+                    try {
+                        boolean solve = get();
+                        if (!solve) {
+                            //JOptionPane.showMessageDialog(frame, "No solution!");
+                        }
+                        buttonBruteForce.setEnabled(true);
+                        buttonBitMasks.setEnabled(true);
+                        buttonClear.setEnabled(true);
+                        buttonGenerate.setEnabled(true);
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
                 }
+            };
 
-                long end = System.nanoTime();
+            buttonBruteForce.setEnabled(false);
+            buttonBitMasks.setEnabled(false);
+            buttonClear.setEnabled(false);
+            buttonGenerate.setEnabled(false);
+            worker.execute();
 
-                double execution = end - start;
-                System.out.println(execution/1000000000+" Seconds");
+        });
 
+
+
+        buttonBitMasks.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                SwingWorker<Boolean, Void> worker = new SwingWorker<Boolean, Void>() {
+                    @Override
+                    protected Boolean doInBackground() throws Exception {
+                        if (grid != null) {
+                            return bitMasks(grid,0,0);
+                        } else {
+                            JOptionPane.showMessageDialog(frame, "Please generate a new grid!");
+                            return false;
+                        }
+                    }
+
+                    @Override
+                    protected void done() {
+                        try {
+                            boolean solve = get();
+                            if (!solve) {
+                                //JOptionPane.showMessageDialog(frame, "No solution!");
+                            }
+                            buttonBruteForce.setEnabled(true);
+                            buttonBitMasks.setEnabled(true);
+                            buttonClear.setEnabled(true);
+                            buttonGenerate.setEnabled(true);
+
+
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+
+                };
+
+                worker.execute();
+                buttonBruteForce.setEnabled(false);
+                buttonBitMasks.setEnabled(false);
+                buttonClear.setEnabled(false);
+                buttonGenerate.setEnabled(false);
             }
+
         });
     }
-    private void printGrid(int[][] x){ //Bug helper
+
+
+    private void printGrid(int[][] x){ //Debug helper
         for (int i = 0; i < 9; i++){
             for (int j = 0; j < 9; j++){
                 System.out.print(x[i][j]);
@@ -154,6 +213,7 @@ public class Grid implements ActionListener{
             System.out.println();
         }
     }
+
     private boolean isDone(int[][] grid){ //CHeck if the graph is done
         for (int row = 0; row< grid.length; row++){
             for (int col = 0; col<grid.length; col++){
@@ -163,48 +223,49 @@ public class Grid implements ActionListener{
         }
         return true;
     }
-    private boolean bruteSolve(int[][] grid)  {
-        int size=grid.length;
+
+    private boolean bruteSolve(int[][] grid) {
+
+        int size = grid.length;
 
         // Check if the puzzle is already solved
-        if (isDone(grid))
+        if (isDone(grid)) {
             return true;
+        }
 
-        for (int row=0; row<size; row++){
-            for (int col=0; col<size; col++){
-                if (grid[row][col]==0){
-                    for (int num=1; num<size+1; num++){
-
-                        if (isValid(grid, row, col, num)){
-                            grid[row][col]=num;
-                            ((JButton) comps[row][col]).setText(""+grid[row][col]);
-//                            SwingUtilities.invokeLater(new Runnable() {
-//                                @Override
-//                                public void run() {
-//                                    try {
-//                                        Thread.sleep(1000);
-//                                    } catch (InterruptedException e) {
-//                                        e.printStackTrace();
-//                                    }
-//                                }
-//                            });
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < size; col++) {
+                if (grid[row][col] == 0) {
+                    for (int num = 1; num <= size; num++) {
+                        if (isValid(grid, row, col, num)) {
+                            grid[row][col] = num;
+                            highlight((JButton) comps[row][col]);
+                            ((JButton) comps[row][col]).setText("" + grid[row][col]);
+                            try {
+                                Thread.sleep(500); //Delay 0.5 seconds
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
 
                             if (bruteSolve(grid)) {
                                 return true;
                             }
 
-                            grid[row][col]=0;
+                            grid[row][col] = 0;
                             ((JButton) comps[row][col]).setText("");
-
+                            clearHighlight((JButton) comps[row][col]);
 
                         }
                     }
                     return false;
                 }
+                clearHighlight((JButton) comps[row][col]);
             }
+
         }
 
-        return false;  //If it's not able to solve
+
+        return false; // If it's not able to solve
     }
 
     //The BitMasks Method
@@ -221,47 +282,45 @@ public class Grid implements ActionListener{
             for (int j = 0; j < grid.length; j++) {
                 row[i] |= 1 << grid[i][j];
                 col[j] |= 1 << grid[i][j];
-                box[getBox(i, j)] |= 1 << grid[i][j];
+                box[getBox(i, j)] |= 1 <<grid[i][j];
             }
+
         }
     }
-    private Boolean isSafe(int i, int j, int number)
-    {
-        return ((row[i] >> number) & 1) == 0
-                && ((col[j] >> number) & 1) == 0
-                && ((box[getBox(i, j)] >> number) & 1) == 0;
-    }
 
-    private int N = 9;
-    private int row[] = new int[N], col[] = new int[N], box[] = new int[N];
+    private int row[] = new int[9], col[] = new int[9], box[] = new int[9];
     private Boolean set=false;
-    private Boolean bitMasks(int grid[][], int i, int j)
-    {
+    private boolean bitMasks(int[][] grid, int i, int j) {
         if (!set) {
             set = true;
             setInitialValues(grid);
         }
-
-        if (i==N-1 && j==N) {
+        if (i ==8 && j == 9) {
             return true;
         }
-        if (j==N) {
-            j=0;
+        if (j == 9) {
+            j = 0;
             i++;
         }
-
-        if (grid[i][j] > 0)
+        if (grid[i][j] > 0) {
             return bitMasks(grid, i, j + 1);
+        }
 
-        for (int k = 1; k <= N; k++) {
-            if (isSafe(i, j, k)) {
-
+        for (int k = 1; k < 10; k++) {
+            if (isValid(grid, i, j, k)) {
                 grid[i][j] = k;
+                ((JButton) comps[i][j]).setText("" + grid[i][j]);
+                highlight((JButton) comps[i][j]);
 
-                ((JButton) comps[i][j]).setText(""+grid[i][j]);
+                try {
+                    Thread.sleep(500); // Delay in milliseconds
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
 
                 row[i] = row[i] + (int) Math.pow(2, k);
                 col[j] = col[j] + (int) Math.pow(2, k);
+                clearHighlight((JButton) comps[i][j]);
 
                 box[getBox(i, j)] = box[getBox(i, j)] + (int) Math.pow(2, k);
 
@@ -272,28 +331,17 @@ public class Grid implements ActionListener{
                 row[i] = row[i] - (int) Math.pow(2, k);
                 col[j] = col[j] - (int) Math.pow(2, k);
                 box[getBox(i, j)] = box[getBox(i, j)] - (int) Math.pow(2, k);
+
             }
 
             grid[i][j] = 0;
-            ((JButton) comps[i][j]).setText(""+grid[i][j]);
-
+            ((JButton) comps[i][j]).setText("");
         }
 
         return false;
     }
 
-
-
-
-    private boolean human(int[][] grid) {
-
-
-
-
-        return false;
-    }
-
-
+        //Helper Method
         private boolean isValid(int[][] grid, int row, int col, int num){
 
         int size=grid.length;
@@ -302,8 +350,6 @@ public class Grid implements ActionListener{
                 return false;
 
             }
-
-
         }
         int boxRow=3*(row/3);
         int boxCol=3*(col/3);
@@ -333,8 +379,8 @@ public class Grid implements ActionListener{
             }
         }
     }
-    public static void main(String[] args){
-    }
+
+    public static void main(String[] args){}
     public void highlight(JButton b){
         b.setBackground(Color.BLACK);
         b.setOpaque(true);
@@ -342,6 +388,15 @@ public class Grid implements ActionListener{
     public void clearHighlight(JButton b){
         b.setBackground(Color.GRAY);
         b.setOpaque(false);
+    }
+    public void clearAllHighlight(){
+
+        for(int row=0;row<9;row++){
+            for(int col=0;col<9;col++){
+                clearHighlight((JButton)comps[row][col]);
+            }
+
+        }
     }
 
 
@@ -378,6 +433,7 @@ public class Grid implements ActionListener{
             }
         }
 
+        //Visualization:
         //Draw the lines in between the board
         @Override
         protected void paintComponent(Graphics g){
