@@ -58,6 +58,7 @@ public class Grid implements ActionListener{
                 int finalJ = j;
                 ((JButton) comps[i][j]).addActionListener(new ActionListener(){
                     public void actionPerformed(ActionEvent e){
+
                         highlight(((JButton)comps[finalI][finalJ]));
                         for(int i=0;i<9;i++){
                             for(int j=0;j<9;j++){
@@ -117,7 +118,9 @@ public class Grid implements ActionListener{
                 fillBoard(g);
             }
         });
+
         buttonBruteForce.addActionListener(e -> {
+            long start = System.nanoTime();
             SwingWorker<Boolean, int[][]> worker = new SwingWorker<Boolean, int[][]>() {
                 @Override
                 protected Boolean doInBackground() throws Exception {
@@ -127,6 +130,12 @@ public class Grid implements ActionListener{
                         if (solve) {
                             publish(solution);
                         }
+                        long end   = System.nanoTime();
+                        double total = end - start;
+
+
+                        JOptionPane.showMessageDialog(frame, "The runtime is: " + total / 1000000000 + " seconds.");
+
                         return solve;
                     } else {
                         JOptionPane.showMessageDialog(frame, "Please generate a new grid!");
@@ -145,6 +154,7 @@ public class Grid implements ActionListener{
                         buttonBitMasks.setEnabled(true);
                         buttonClear.setEnabled(true);
                         buttonGenerate.setEnabled(true);
+
                     } catch (Exception ex) {
                         ex.printStackTrace();
                     }
@@ -163,15 +173,19 @@ public class Grid implements ActionListener{
 
         buttonBitMasks.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
+                long start= System.nanoTime();
                 SwingWorker<Boolean, Void> worker = new SwingWorker<Boolean, Void>() {
                     @Override
                     protected Boolean doInBackground() throws Exception {
-                        if (grid != null) {
-                            return bitMasks(grid,0,0);
-                        } else {
-                            JOptionPane.showMessageDialog(frame, "Please generate a new grid!");
-                            return false;
-                        }
+                        boolean solve = bitMasks(grid, 0, 0);
+
+                        long end = System.nanoTime();
+                        double totalRuntime = end - start;
+
+                        JOptionPane.showMessageDialog(frame, "The runtime is: " + totalRuntime/1000000000 + " seconds.");
+
+                        return solve;
+
                     }
 
                     @Override
@@ -199,8 +213,8 @@ public class Grid implements ActionListener{
                 buttonBitMasks.setEnabled(false);
                 buttonClear.setEnabled(false);
                 buttonGenerate.setEnabled(false);
-            }
 
+            }
         });
     }
 
@@ -294,6 +308,7 @@ public class Grid implements ActionListener{
         if (!set) {
             set = true;
             setInitialValues(grid);
+
         }
         if (i ==8 && j == 9) {
             return true;
@@ -302,6 +317,7 @@ public class Grid implements ActionListener{
             j = 0;
             i++;
         }
+
         if (grid[i][j] > 0) {
             return bitMasks(grid, i, j + 1);
         }
@@ -363,6 +379,7 @@ public class Grid implements ActionListener{
 
         return true;
     }
+
     public void fillBoard(int[][] grid){
         slotX=10;
         slotY=10;
